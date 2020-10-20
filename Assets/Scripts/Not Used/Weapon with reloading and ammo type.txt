@@ -1,0 +1,125 @@
+using System.Collections;
+using UnityEngine;
+
+public class Weapon : MonoBehaviour
+{
+    #region declarations
+
+    public bool ColdWeapon = false;
+    public bool AutoFire = true;
+    public float Damage = 10f;
+    public float MaxDistance = 20f;
+    public int Rate = 150;
+
+    [Header("Firing gun")]
+    public GameObject FireEffect;
+    public Transform EffectPosition;
+    public float ReloadTime = 1.2f;
+
+    [Space]
+    [Tooltip("Starts from 0")]
+    public int AmmoID;
+    public int MagBulletsMax = 10;
+    public int MagBulletsCurrent = 10;
+
+    [Header("Cold weapon")]
+    public float Cone = 90f;
+    public float TimeToPrepairing = .3f;
+
+    Transform cameraMain;
+    float TimeBetShorts = 0f, TimeReadyShoot;
+    bool ReloadingFlag = false, BladeFlag = false;
+    Ammo ammo;
+
+    #endregion
+
+    private void Start()
+    {
+        TimeReadyShoot = 1 / (Rate / 60f); // sec to next short
+        cameraMain = Camera.main.transform;
+        ammo = FindObjectOfType<Ammo>();
+    }
+
+    private void Update()
+    {
+        if (!ColdWeapon) // firing gun
+        {
+            if (TimeBetShorts < TimeReadyShoot) TimeBetShorts += Time.deltaTime;
+            if (AutoFire && TimeBetShorts >= TimeReadyShoot && Aiming() && MagBulletsCurrent > 0 && !ReloadingFlag) Shoot();
+            if (MagBulletsCurrent <= 0 && ammo.AmmoTypes[AmmoID].CurrentCount > 0 && !ReloadingFlag) StartCoroutine(Reloading());
+        }
+        else // cold weapon
+        {
+            if (AutoFire && Aiming() && !BladeFlag) StartCoroutine(Blade());
+        }
+    }
+
+    bool Aiming()
+    {
+        RaycastHit hit;
+        if (Physics.Raycast(cameraMain.position, cameraMain.forward, out hit, MaxDistance))
+        {
+            EnemyBaheviour enemy = hit.transform.GetComponent<EnemyBaheviour>();
+            if (enemy != null) return true;
+            else return false;
+        }
+        else return false;
+    }
+
+    void Shoot()
+    {
+        // Debug.Log("Short");
+        RaycastHit hit;
+        if (Physics.Raycast(cameraMain.position, cameraMain.forward, out hit, MaxDistance))
+        {
+            EnemyBaheviour enemy = hit.transform.GetComponent<EnemyBaheviour>();
+            if (enemy != null) enemy.TakeDamage(Damage);
+        }
+        MagBulletsCurrent--;
+        TimeBetShorts = 0f;
+
+        Instantiate(FireEffect, EffectPosition.position, EffectPosition.rotation);
+    }
+
+    IEnumerator Reloading()
+    {
+        Debug.Log("Reloading...");
+        ReloadingFlag = true;
+
+        yield return new WaitForSeconds(ReloadTime);
+
+        int bulletsMoving = MagBulletsMax - MagBulletsCurrent;
+        if (bulletsMoving > ammo.AmmoTypes[AmmoID].CurrentCount) // need more then i have
+        {
+            MagBulletsCurrent += ammo.AmmoTypes[AmmoID].CurrentCount;
+            ammo.AmmoTypes[AmmoID].CurrentCount = 0;
+        }
+        else // i have a lot of bullets
+        {
+            MagBulletsCurrent = MagBulletsMax;
+            ammo.AmmoTypes[AmmoID].CurrentCount -= bulletsMoving;
+        }
+
+        Debug.Log("Reloaded");
+        ReloadingFlag = false;
+    }
+
+    IEnumerator Blade()
+    {
+        BladeFlag = true;
+        yield return new WaitForSeconds(TimeToPrepairing);
+
+        // check cone and damage
+        Debug.Log("KaYaaaa!");
+        Collider[] checkSphere = Physics.OverlapSphere(cameraMain.position, MaxDistance);
+        foreach (var item in checkSphere)
+        {
+            Vector3 toTarget = item.transform.position - cameraMain.position;
+            EnemyBaheviour enemy = item.GetComponent<EnemyBaheviour>();
+            if (Vector3.Angle(cameraMain.forward, toTarget) < Cone && enemy != null) enemy.TakeDamage(Damage);
+        }
+
+        yield return new WaitForSeconds(TimeReadyShoot - TimeToPrepairing);
+        BladeFlag = false;
+    }
+}

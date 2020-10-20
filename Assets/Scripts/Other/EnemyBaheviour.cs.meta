@@ -1,0 +1,13 @@
+fileFormatVersion: 2
+guid: 606b5ee72e46196418f30d8386361350
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - SoulPrefab: {fileID: 4866485717166624060, guid: ec712e7a5ded3b64591e025151f42298,
+      type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
